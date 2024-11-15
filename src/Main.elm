@@ -9,6 +9,8 @@ import Chart.Attributes
 import Chart.Events
 import Chart.Item
 import Color
+import FormatNumber
+import FormatNumber.Locales
 import Html exposing (Html)
 import Html.Attributes
 import Html.Events
@@ -203,7 +205,22 @@ view state =
                     ]
                 , Html.p
                     []
-                    [ Html.text ("Sepsis-Risikoeinschätzung insgesamt: " ++ (patientDetailsState.risk |> String.fromFloat))
+                    [ Html.text
+                        ("Sepsis-Risikoeinschätzung insgesamt: "
+                            ++ (patientDetailsState.risk
+                                    * 100
+                                    |> FormatNumber.format
+                                        (FormatNumber.Locales.spanishLocale
+                                            |> (\l ->
+                                                    { l
+                                                        | decimals =
+                                                            FormatNumber.Locales.Max 0
+                                                    }
+                                               )
+                                        )
+                               )
+                            ++ "%"
+                        )
                     ]
                 , Html.div
                     [ Html.Attributes.style "display" "flex"
