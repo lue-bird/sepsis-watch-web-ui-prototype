@@ -5,3 +5,4 @@ zombie
 .vscode
 runner-compiled
 dist
+.vite
