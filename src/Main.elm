@@ -161,10 +161,6 @@ view state =
                                             (\() ->
                                                 case patientDetailDummies |> List.filter (\patientDetail -> patientDetail.id == patient.id) of
                                                     [] ->
-                                                        let
-                                                            _ =
-                                                                Debug.log "patientDetailDummies not matching id"
-                                                        in
                                                         PatientsOverviewState patientsOverviewState
 
                                                     patientDetails :: _ ->
