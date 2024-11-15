@@ -1,14 +1,9 @@
-Minimal setup for an [`elm-state-interface`](https://dark.elm.dmy.fr/packages/lue-bird/elm-state-interface/latest/) app
+> Big warning! This is a random part of a education project published just to get a nice github pages website to discuss the UI prototype!
 
 ```shell
-git clone https://github.com/lue-bird/elm-state-interface-hello.git && \
-cd elm-state-interface-hello && \
-npm install && \
-npx vite
+npm install && npx vite
 ```
   - open http://localhost:5173/ to see your app
-  - open `src/App.elm` in an editor to paste in example code and fiddle around yourself
-
 
 For all future runs, you just need
 ```shell
