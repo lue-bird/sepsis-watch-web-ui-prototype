@@ -10,6 +10,11 @@ For all future runs, you just need
 npx vite
 ```
 
+To update the preview website
+```shell
+npm run deploy
+```
+
 Links to the tools:
   - [vite](https://vitejs.dev/)
   - [ryan-haskell/vite-plugin-elm-watch](https://github.com/ryan-haskell/vite-plugin-elm-watch)
