@@ -167,14 +167,56 @@ view state =
         PatientsOverviewState patientsOverviewState ->
             uiFrame []
                 [ Html.h1
-                    []
+                    [ Html.Attributes.style "margin-bottom" "0px" ]
                     [ Html.text "Patienten Risiko-Übersicht"
+                    ]
+                , Html.div
+                    [ Html.Attributes.style "display" "flex"
+                    , Html.Attributes.style "flex-direction" "column"
+                    , Html.Attributes.style "align-items" "start"
+                    , Html.Attributes.style "gap" "10px"
+                    , Html.Attributes.style "padding-bottom" "30px"
+                    , Html.Attributes.style "padding-top" "0px"
+                    , Html.Attributes.style "margin-top" "0px"
+                    ]
+                    [ Html.h4
+                        [ Html.Attributes.style "margin-bottom" "0px"
+                        ]
+                        [ Html.text "Risiko-Legende" ]
+                    , Html.div
+                        [ Html.Attributes.style "display" "flex"
+                        , Html.Attributes.style "flex-direction" "row"
+                        , Html.Attributes.style "align-items" "start"
+                        , Html.Attributes.style "gap" "5px"
+                        ]
+                        [ uiRiskCircle riskGreen
+                        , Html.text "keine Auffälligkeiten"
+                        ]
+                    , Html.div
+                        [ Html.Attributes.style "display" "flex"
+                        , Html.Attributes.style "flex-direction" "row"
+                        , Html.Attributes.style "align-items" "start"
+                        , Html.Attributes.style "gap" "5px"
+                        ]
+                        [ uiRiskCircle riskYellow
+                        , Html.text "wenige aber nicht eindeutige Auffälligkeiten"
+                        ]
+                    , Html.div
+                        [ Html.Attributes.style "display" "flex"
+                        , Html.Attributes.style "flex-direction" "row"
+                        , Html.Attributes.style "align-items" "start"
+                        , Html.Attributes.style "gap" "5px"
+                        ]
+                        [ uiRiskCircle riskRed
+                        , Html.text "Sepsis erkannt"
+                        ]
                     ]
                 , Html.div
                     [ Html.Attributes.style "display" "flex"
                     , Html.Attributes.style "flex-direction" "column"
                     , Html.Attributes.style "justify-content" "start"
                     , Html.Attributes.style "align-items" "start"
+                    , Html.Attributes.style "gap" "0px"
                     ]
                     (patientsOverviewState.patients
                         |> List.map
@@ -182,29 +224,21 @@ view state =
                                 Html.div
                                     [ Html.Attributes.style "display" "flex"
                                     , Html.Attributes.style "flex-direction" "row"
-                                    , Html.Attributes.style "justify-content" "center"
                                     , Html.Attributes.style "align-items" "center"
-                                    , Html.Attributes.style "gap" "20px"
+                                    , Html.Attributes.style "column-gap" "20px"
                                     ]
-                                    [ Html.div
-                                        [ Html.Attributes.style "background-color"
-                                            (if patient.risk < 0.33 then
-                                                "green"
+                                    [ uiRiskCircle
+                                        (if patient.risk < 0.33 then
+                                            riskGreen
 
-                                             else if patient.risk < 0.66 then
-                                                Color.rgb255 200 200 20 |> Color.toCssString
+                                         else if patient.risk < 0.66 then
+                                            riskYellow
 
-                                             else
-                                                "red"
-                                            )
-                                        , Html.Attributes.style "min-width" "35px"
-                                        , Html.Attributes.style "max-width" "35px"
-                                        , Html.Attributes.style "border-radius" "35px"
-                                        , Html.Attributes.style "min-height" "35px"
-                                        , Html.Attributes.style "max-height" "35px"
-                                        ]
-                                        [ Html.text "" ]
-                                    , uiButton "Details anzeigen" []
+                                         else
+                                            riskRed
+                                        )
+                                    , uiButton "Details anzeigen"
+                                        []
                                         |> Html.map
                                             (\() ->
                                                 case patientDetailDummies |> List.filter (\patientDetail -> patientDetail.id == patient.id) of
@@ -226,7 +260,7 @@ view state =
                                                             }
                                             )
                                     , Html.p
-                                        []
+                                        [ Html.Attributes.style "white-space" "nowrap" ]
                                         [ Html.text patient.name
                                         ]
                                     ]
@@ -248,12 +282,18 @@ view state =
                         (\() -> PatientsOverviewState { patients = patientOverviewInfoDummies })
                 , Html.p
                     []
-                    [ Html.h4 [] [ Html.text "Name" ]
+                    [ Html.h4
+                        [ Html.Attributes.style "margin-bottom" "0px"
+                        ]
+                        [ Html.text "Name" ]
                     , Html.text patientDetailsState.name
                     ]
                 , Html.p
                     []
-                    [ Html.h4 [] [ Html.text "Sepsis-Risikoeinschätzung insgesamt" ]
+                    [ Html.h4
+                        [ Html.Attributes.style "margin-bottom" "0px"
+                        ]
+                        [ Html.text "Sepsis-Risikoeinschätzung insgesamt" ]
                     , Html.text
                         ((patientDetailsState.risk
                             * 100
@@ -275,7 +315,7 @@ view state =
                     , Html.Attributes.style "flex-direction" "column"
                     , Html.Attributes.style "justify-content" "start"
                     , Html.Attributes.style "align-items" "start"
-                    , Html.Attributes.style "gap" "40px"
+                    , Html.Attributes.style "gap" "34px"
                     ]
                     [ uiChartFrame
                         { label = "Herzschläge/Minute in den letzten 6 Stunden"
@@ -381,17 +421,41 @@ view state =
                                                 )
                                             ]
                                         , Html.text
-                                            ("Vor "
-                                                ++ -- TODO relative time
-                                                   (annotation.timestamp |> Time.toHour Time.utc |> String.fromInt)
-                                                ++ " Stunden: "
-                                                ++ annotation.comment
-                                            )
+                                            annotation.comment
                                         ]
                                 )
                         )
                     ]
                 ]
+
+
+riskGreen : Color.Color
+riskGreen =
+    Color.rgb 0.4 1 0.1
+
+
+riskYellow : Color.Color
+riskYellow =
+    Color.rgb 1 0.8 0.3
+
+
+riskRed : Color.Color
+riskRed =
+    Color.rgb 1 0.4 0.1
+
+
+uiRiskCircle : Color.Color -> Html msg
+uiRiskCircle color =
+    Html.div
+        [ Html.Attributes.style "background-color"
+            (color |> Color.toCssString)
+        , Html.Attributes.style "min-width" "35px"
+        , Html.Attributes.style "max-width" "35px"
+        , Html.Attributes.style "border-radius" "35px"
+        , Html.Attributes.style "min-height" "35px"
+        , Html.Attributes.style "max-height" "35px"
+        ]
+        [ Html.text "" ]
 
 
 feelingToPercentage : Feeling -> Float
@@ -438,7 +502,11 @@ uiChartFrame config =
         [ Html.label
             [ Html.Attributes.style "font-size" "1rem"
             ]
-            [ Html.h4 [] [ Html.text config.label ] ]
+            [ Html.h4
+                [ Html.Attributes.style "margin-bottom" "0px"
+                ]
+                [ Html.text config.label ]
+            ]
         , Html.div
             [ Html.Attributes.style "max-width" "500px"
             , Html.Attributes.style "min-width" "500px"
