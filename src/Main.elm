@@ -23,7 +23,11 @@ import Time
 
 
 type State
-    = LoginState { password : String, username : String }
+    = LoginState
+        { password : String
+        , username : String
+        , lastCombinationWasInvalid : Bool
+        }
     | PatientsOverviewState
         { patients :
             List
@@ -94,7 +98,11 @@ type Feeling
 
 initialState : State
 initialState =
-    LoginState { password = "", username = "" }
+    LoginState
+        { password = ""
+        , username = "Mirim Swischenmuster"
+        , lastCombinationWasInvalid = False
+        }
 
 
 view : State -> Html State
@@ -117,6 +125,7 @@ view state =
                         [ uiInputLabelled
                             { label = "Benutzername"
                             , value = loginState.username
+                            , type_ = "text"
                             }
                             |> Html.map
                                 (\newUsernameInput -> LoginState { loginState | username = newUsernameInput })
@@ -124,19 +133,33 @@ view state =
                           uiInputLabelled
                             { label = "Passwort"
                             , value = loginState.password
+                            , type_ = "password"
                             }
                             |> Html.map
                                 (\newPasswordInput -> LoginState { loginState | password = newPasswordInput })
-                        , -- TODO check (dummy)
-                          -- if (loginState.username /= "Max Muster") || (loginState.password /= "1234") then
-                          --   Web.domBoolProperty "disabled" True
-                          --
-                          -- else
-                          uiButton "Login"
+                        , uiButton "Login"
                             [ Html.Attributes.style "margin" "24px 0px 0px 0px"
                             ]
                             |> Html.map
-                                (\() -> PatientsOverviewState { patients = patientOverviewInfoDummies })
+                                (\() ->
+                                    if loginState.password == "123" then
+                                        LoginState { loginState | lastCombinationWasInvalid = True }
+
+                                    else
+                                        PatientsOverviewState { patients = patientOverviewInfoDummies }
+                                )
+                        , if loginState.lastCombinationWasInvalid then
+                            Html.p
+                                [ Html.Attributes.style "padding" "12px"
+                                , Html.Attributes.style "background-color"
+                                    (Color.rgb 1 0.7 0.6 |> Color.toCssString)
+                                , Html.Attributes.style "border-radius" "10px"
+                                ]
+                                [ Html.text "Die Kombination aus Benutzername und Passwort ist ungültig"
+                                ]
+
+                          else
+                            Html.text ""
                         ]
                     ]
                 ]
@@ -655,20 +678,21 @@ uiInputStyleBase =
 uiInputLabelled :
     { label : String
     , value : String
+    , type_ : String
     }
     -> Html String
-uiInputLabelled dateInputConfig =
+uiInputLabelled config =
     Html.div
         []
         [ Html.label
             [ Html.Attributes.style "margin-bottom" "7px"
             , Html.Attributes.style "font-size" "1rem"
             ]
-            [ Html.text dateInputConfig.label ]
+            [ Html.text config.label ]
         , Html.input
             (uiInputStyleBase
-                ++ [ Html.Attributes.value dateInputConfig.value
-                   , Html.Attributes.type_ "text"
+                ++ [ Html.Attributes.value config.value
+                   , Html.Attributes.type_ config.type_
                    , uiInputChangeListen
                    ]
             )
