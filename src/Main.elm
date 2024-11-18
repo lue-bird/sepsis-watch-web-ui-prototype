@@ -100,7 +100,7 @@ initialState : State
 initialState =
     LoginState
         { password = ""
-        , username = "Mirim Swischenmuster"
+        , username = "Mirim Zwischenmuster"
         , lastCombinationWasInvalid = False
         }
 
@@ -275,7 +275,7 @@ view state =
                     [ Html.text "Patient Detail-Ansicht"
                     ]
                 , uiButton "zur Übersicht zurückkehren"
-                    [ Html.Attributes.style "margin" "0px 0px 40px 0px"
+                    [ Html.Attributes.style "margin" "0px 0px 10px 0px"
                     , Html.Attributes.style "width" "fit-content"
                     ]
                     |> Html.map
