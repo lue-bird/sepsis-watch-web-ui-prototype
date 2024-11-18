@@ -52,6 +52,19 @@ type State
                     , List (Chart.Item.One RespiratoryRateObservation Chart.Item.Any)
                     )
                 )
+        , feelingHistory : List FeelingObservation
+        , feelingHovering :
+            List
+                (Chart.Item.Item
+                    ( Chart.Item.One FeelingObservation Chart.Item.Any
+                    , List (Chart.Item.One FeelingObservation Chart.Item.Any)
+                    )
+                )
+        , annotationHistory :
+            List
+                { timestamp : Time.Posix
+                , comment : String
+                }
         }
 
 
@@ -67,6 +80,18 @@ type alias RespiratoryRateObservation =
     }
 
 
+type alias FeelingObservation =
+    { timestamp : Time.Posix
+    , value : Feeling
+    }
+
+
+type Feeling
+    = FeelingBad
+    | FeelingOkay
+    | FeelingGood
+
+
 initialState : State
 initialState =
     LoginState { password = "", username = "" }
@@ -76,7 +101,7 @@ view : State -> Html State
 view state =
     case state of
         LoginState loginState ->
-            htmlFrame []
+            uiFrame []
                 [ Html.div
                     [ Html.Attributes.style "display" "flex"
                     , Html.Attributes.style "flex-direction" "column"
@@ -117,7 +142,7 @@ view state =
                 ]
 
         PatientsOverviewState patientsOverviewState ->
-            htmlFrame []
+            uiFrame []
                 [ Html.h1
                     []
                     [ Html.text "Patienten Risiko-Übersicht"
@@ -172,6 +197,9 @@ view state =
                                                             , heartRateHovering = []
                                                             , respiratoryRateHistory = patientDetails.respiratoryRateHistory
                                                             , respiratoryRateHovering = []
+                                                            , feelingHistory = patientDetails.feelingHistory
+                                                            , feelingHovering = []
+                                                            , annotationHistory = patientDetails.annotationHistory
                                                             }
                                             )
                                     , Html.p
@@ -184,7 +212,7 @@ view state =
                 ]
 
         PatientDetailsState patientDetailsState ->
-            htmlFrame []
+            uiFrame []
                 [ Html.h1
                     [ Html.Attributes.style "margin-bottom" "0px" ]
                     [ Html.text "Patient Detail-Ansicht"
@@ -197,24 +225,25 @@ view state =
                         (\() -> PatientsOverviewState { patients = patientOverviewInfoDummies })
                 , Html.p
                     []
-                    [ Html.text ("Name: " ++ patientDetailsState.name)
+                    [ Html.h4 [] [ Html.text "Name" ]
+                    , Html.text patientDetailsState.name
                     ]
                 , Html.p
                     []
-                    [ Html.text
-                        ("Sepsis-Risikoeinschätzung insgesamt: "
-                            ++ (patientDetailsState.risk
-                                    * 100
-                                    |> FormatNumber.format
-                                        (FormatNumber.Locales.spanishLocale
-                                            |> (\l ->
-                                                    { l
-                                                        | decimals =
-                                                            FormatNumber.Locales.Max 0
-                                                    }
-                                               )
-                                        )
-                               )
+                    [ Html.h4 [] [ Html.text "Sepsis-Risikoeinschätzung insgesamt" ]
+                    , Html.text
+                        ((patientDetailsState.risk
+                            * 100
+                            |> FormatNumber.format
+                                (FormatNumber.Locales.spanishLocale
+                                    |> (\l ->
+                                            { l
+                                                | decimals =
+                                                    FormatNumber.Locales.Max 0
+                                            }
+                                       )
+                                )
+                         )
                             ++ "%"
                         )
                     ]
@@ -271,8 +300,88 @@ view state =
                                         | respiratoryRateHovering = newHovering
                                     }
                             )
+                    , uiChartFrame
+                        { label = "Befinden (Selbsteinschätzung) in den letzten 24 Stunden"
+                        , chart =
+                            Chart.series
+                                (\observation -> observation.timestamp |> Time.posixToMillis |> Basics.toFloat)
+                                [ Chart.interpolated (\obs -> obs.value |> feelingToPercentage) [] []
+                                    |> Chart.named "Befinden (prozentual)"
+                                ]
+                                (patientDetailsState.feelingHistory
+                                    |> List.sortBy
+                                        (\observation -> observation.timestamp |> Time.posixToMillis)
+                                )
+                        , goodYMin = 0.48
+                        , goodYMax = 1
+                        , hovering = patientDetailsState.feelingHovering
+                        }
+                        |> Html.map
+                            (\newHovering ->
+                                PatientDetailsState
+                                    { patientDetailsState
+                                        | feelingHovering = newHovering
+                                    }
+                            )
+                    ]
+                , Html.div
+                    [ Html.Attributes.style "padding-top" "80px" ]
+                    [ Html.label
+                        [ Html.Attributes.style "font-size" "1rem"
+                        ]
+                        [ Html.h4 [] [ Html.text "freiform Kommentare des Patienten" ] ]
+                    , Html.div
+                        ([ Html.Attributes.style "display" "flex"
+                         , Html.Attributes.style "flex-direction" "column"
+                         , Html.Attributes.style "justify-content" "start"
+                         , Html.Attributes.style "align-items" "start"
+                         , Html.Attributes.style "gap" "0px"
+                         , Html.Attributes.style "max-height" "400px"
+                         , Html.Attributes.style "overflow-y" "scroll"
+                         , Html.Attributes.style "max-width" "700px"
+                         ]
+                            ++ uiInputStyleBase
+                        )
+                        (patientDetailsState.annotationHistory
+                            |> List.sortBy
+                                (\annotation -> annotation.timestamp |> Time.posixToMillis)
+                            |> List.map
+                                (\annotation ->
+                                    --Html.div [] [
+                                    Html.p []
+                                        [ Html.em [ Html.Attributes.style "opacity" "0.5" ]
+                                            [ Html.text
+                                                ("Vor "
+                                                    ++ -- TODO relative time
+                                                       (annotation.timestamp |> Time.toHour Time.utc |> String.fromInt)
+                                                    ++ " Stunden: "
+                                                )
+                                            ]
+                                        , Html.text
+                                            ("Vor "
+                                                ++ -- TODO relative time
+                                                   (annotation.timestamp |> Time.toHour Time.utc |> String.fromInt)
+                                                ++ " Stunden: "
+                                                ++ annotation.comment
+                                            )
+                                        ]
+                                )
+                        )
                     ]
                 ]
+
+
+feelingToPercentage : Feeling -> Float
+feelingToPercentage feeling =
+    case feeling of
+        FeelingBad ->
+            0
+
+        FeelingOkay ->
+            0.5
+
+        FeelingGood ->
+            1
 
 
 uiChartFrame :
@@ -304,10 +413,9 @@ uiChartFrame config =
     Html.div
         []
         [ Html.label
-            [ Html.Attributes.style "margin-bottom" "17px"
-            , Html.Attributes.style "font-size" "1rem"
+            [ Html.Attributes.style "font-size" "1rem"
             ]
-            [ Html.text config.label ]
+            [ Html.h4 [] [ Html.text config.label ] ]
         , Html.div
             [ Html.Attributes.style "max-width" "500px"
             , Html.Attributes.style "min-width" "500px"
@@ -370,9 +478,9 @@ uiButton label additionalModifiers =
         (uiInputStyleBase
             ++ additionalModifiers
             ++ [ Html.Attributes.style "padding" "4px 12px"
-            , Html.Attributes.style "border-radius" "100px"
-            , Html.Events.on "pointerdown" (Json.Decode.succeed ())
-            ]
+               , Html.Attributes.style "border-radius" "100px"
+               , Html.Events.on "pointerdown" (Json.Decode.succeed ())
+               ]
         )
         [ Html.text label ]
 
@@ -393,6 +501,12 @@ patientDetailDummies :
         , risk : Float
         , heartRateHistory : List HeartRateObservation
         , respiratoryRateHistory : List RespiratoryRateObservation
+        , feelingHistory : List FeelingObservation
+        , annotationHistory :
+            List
+                { timestamp : Time.Posix
+                , comment : String
+                }
         }
 patientDetailDummies =
     let
@@ -407,16 +521,20 @@ patientDetailDummies =
                                 , risk = patient.risk
                                 , heartRateHistory = healthData.heartRateHistory
                                 , respiratoryRateHistory = healthData.respiratoryRateHistory
+                                , feelingHistory = healthData.feelingHistory
+                                , annotationHistory = healthData.annotationHistory
                                 }
                             )
                             patientOverviewInfoDummies
                             healthDataList
                     )
                     (Random.list 6
-                        (Random.map2
-                            (\heartRateHistory respiratoryRateHistory ->
+                        (Random.map4
+                            (\heartRateHistory respiratoryRateHistory feelingHistory annotationHistory ->
                                 { heartRateHistory = heartRateHistory
                                 , respiratoryRateHistory = respiratoryRateHistory
+                                , feelingHistory = feelingHistory
+                                , annotationHistory = annotationHistory
                                 }
                             )
                             (Random.list 200
@@ -441,6 +559,43 @@ patientDetailDummies =
                                     (Random.float 18 28)
                                 )
                             )
+                            (Random.list 6
+                                (Random.map2
+                                    (\millis value ->
+                                        { timestamp = Time.millisToPosix millis
+                                        , value = value
+                                        }
+                                    )
+                                    (Random.int 0 (24 * 60 * 60 * 1000))
+                                    (Random.uniform FeelingBad [ FeelingOkay, FeelingGood ])
+                                )
+                            )
+                            (Random.list 20
+                                (Random.map2
+                                    (\millis comment ->
+                                        { timestamp = Time.millisToPosix millis
+                                        , comment = comment
+                                        }
+                                    )
+                                    (Random.int 0 (24 * 60 * 60 * 1000))
+                                    (Random.uniform
+                                        "Ich habe Beschwerden"
+                                        [ "Bitte neuen Termin"
+                                        , "Verfärbung im Lungenbereich"
+                                        , "Herzprobleme"
+                                        , "Schwäche und Müdigkeit"
+                                        , "Kopfschmerzen"
+                                        , "Kann Pillen nicht finden"
+                                        , "Wie sendet man die Daten?"
+                                        , "Passwort123456"
+                                        , "Mein Name ist Liselotte"
+                                        , "Ich habe in ihrer Praxis mein Gebiss vergessen"
+                                        , "Mein Herz beruhigt sich nicht. Was soll ich machen?"
+                                        , "Die Handystrahlen sind böse sagt feßbock"
+                                        ]
+                                    )
+                                )
+                            )
                         )
                     )
                 )
@@ -455,12 +610,25 @@ overviewPatientDummyRandomGenerator =
         (Random.map String.fromList
             (Random.list 16 (Random.map Char.fromCode (Random.int 0 9)))
         )
-        (Random.uniform "Ella" [ "Mina", "Alex", "Fred", "Michael", "Juni", "Sabine", "Erik" ])
+        (Random.uniform "Ella"
+            [ "Mina Berger"
+            , "Alex Cena"
+            , "Fred Wolf"
+            , "Michael Steinmacher"
+            , "Juni Gestern"
+            , "Sabine Zeitler"
+            , "Erik Mätzner"
+            , "Angelika Senner"
+            , "Riko Gaus"
+            , "Nuhr Alavik"
+            , "Andreas Kleber"
+            ]
+        )
         (Random.float 0 1)
 
 
-htmlFrame : List (Html.Attribute future) -> List (Html future) -> Html future
-htmlFrame additionalModifiers subs =
+uiFrame : List (Html.Attribute future) -> List (Html future) -> Html future
+uiFrame additionalModifiers subs =
     Html.div
         ([ Html.Attributes.style "padding" "40px 120px 40px 120px"
          ]
@@ -477,6 +645,10 @@ uiInputStyleBase =
     , Html.Attributes.style "font-size" "1rem"
     , Html.Attributes.style "background-color"
         (Color.rgb 1 1 1 |> Color.toCssString)
+    , Html.Attributes.style "border"
+        ("solid " ++ (Color.rgb 0 0 0 |> Color.toCssString))
+    , Html.Attributes.style "border-width" "2px 2px 2px 2px"
+    , Html.Attributes.style "border-radius" "8px"
     ]
 
 
@@ -496,9 +668,9 @@ uiInputLabelled dateInputConfig =
         , Html.input
             (uiInputStyleBase
                 ++ [ Html.Attributes.value dateInputConfig.value
-                , Html.Attributes.type_ "text"
-                , uiInputChangeListen
-                ]
+                   , Html.Attributes.type_ "text"
+                   , uiInputChangeListen
+                   ]
             )
             []
         ]
