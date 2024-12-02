@@ -65,6 +65,14 @@ type State
                     , List (Chart.Item.One FeelingObservation Chart.Item.Any)
                     )
                 )
+        , temperatureHistory : List TemperatureObservation
+        , temperatureHovering :
+            List
+                (Chart.Item.Item
+                    ( Chart.Item.One TemperatureObservation Chart.Item.Any
+                    , List (Chart.Item.One TemperatureObservation Chart.Item.Any)
+                    )
+                )
         , annotationHistory :
             List
                 { timestamp : Time.Posix
@@ -88,6 +96,12 @@ type alias RespiratoryRateObservation =
 type alias FeelingObservation =
     { timestamp : Time.Posix
     , value : Feeling
+    }
+
+
+type alias TemperatureObservation =
+    { timestamp : Time.Posix
+    , degreesCelsius : Float
     }
 
 
@@ -256,6 +270,8 @@ view state =
                                                             , heartRateHovering = []
                                                             , respiratoryRateHistory = patientDetails.respiratoryRateHistory
                                                             , respiratoryRateHovering = []
+                                                            , temperatureHistory = patientDetails.temperatureHistory
+                                                            , temperatureHovering = []
                                                             , feelingHistory = patientDetails.feelingHistory
                                                             , feelingHovering = []
                                                             , annotationHistory = patientDetails.annotationHistory
@@ -372,6 +388,29 @@ view state =
                                 PatientDetailsState
                                     { patientDetailsState
                                         | respiratoryRateHovering = newHovering
+                                    }
+                            )
+                    , uiChartFrame
+                        { label = "Körpertemperatur in °C in den letzten 6 Stunden"
+                        , chart =
+                            Chart.series
+                                (\observation -> observation.timestamp |> Time.posixToMillis |> Basics.toFloat)
+                                [ Chart.interpolated .degreesCelsius [] []
+                                    |> Chart.named "Körpertemperatur in °C"
+                                ]
+                                (patientDetailsState.temperatureHistory
+                                    |> List.sortBy
+                                        (\observation -> observation.timestamp |> Time.posixToMillis)
+                                )
+                        , goodYMin = 36.5
+                        , goodYMax = 38
+                        , hovering = patientDetailsState.temperatureHovering
+                        }
+                        |> Html.map
+                            (\newHovering ->
+                                PatientDetailsState
+                                    { patientDetailsState
+                                        | temperatureHovering = newHovering
                                     }
                             )
                     , uiChartFrame
@@ -591,7 +630,8 @@ patientOverviewInfoDummies : List { id : String, name : String, risk : Float }
 patientOverviewInfoDummies =
     let
         ( dummies, _ ) =
-            Random.step (Random.list 6 overviewPatientDummyRandomGenerator) (Random.initialSeed 0)
+            Random.step (Random.list 6 overviewPatientDummyRandomGenerator)
+                (Random.initialSeed 0)
     in
     dummies
 
@@ -604,6 +644,7 @@ patientDetailDummies :
         , contact : String
         , heartRateHistory : List HeartRateObservation
         , respiratoryRateHistory : List RespiratoryRateObservation
+        , temperatureHistory : List TemperatureObservation
         , feelingHistory : List FeelingObservation
         , annotationHistory :
             List
@@ -625,6 +666,7 @@ patientDetailDummies =
                                 , contact = extraPatientData.context
                                 , heartRateHistory = extraPatientData.heartRateHistory
                                 , respiratoryRateHistory = extraPatientData.respiratoryRateHistory
+                                , temperatureHistory = extraPatientData.temperatureHistory
                                 , feelingHistory = extraPatientData.feelingHistory
                                 , annotationHistory = extraPatientData.annotationHistory
                                 }
@@ -633,107 +675,129 @@ patientDetailDummies =
                             healthDataList
                     )
                     (Random.list 6
-                        (Random.map5
-                            (\contact heartRateHistory respiratoryRateHistory feelingHistory annotationHistory ->
+                        (Random.constant
+                            (\contact heartRateHistory respiratoryRateHistory temperatureHistory feelingHistory annotationHistory ->
                                 { context = contact
                                 , heartRateHistory = heartRateHistory
                                 , respiratoryRateHistory = respiratoryRateHistory
+                                , temperatureHistory = temperatureHistory
                                 , feelingHistory = feelingHistory
                                 , annotationHistory = annotationHistory
                                 }
                             )
-                            (Random.uniform
-                                (Random.list 10 (Random.int 0 9)
-                                    |> Random.map
-                                        (\digits ->
-                                            digits |> List.map String.fromInt |> String.concat
-                                        )
-                                )
-                                [ Random.map3
-                                    (\name digits domain ->
-                                        (name |> String.fromList)
-                                            ++ (digits |> List.map String.fromInt |> String.concat)
-                                            ++ "@"
-                                            ++ domain
+                            |> randomAndMap
+                                (Random.uniform
+                                    (Random.list 10 (Random.int 0 9)
+                                        |> Random.map
+                                            (\digits ->
+                                                digits |> List.map String.fromInt |> String.concat
+                                            )
                                     )
-                                    (Random.list 6
-                                        (Random.map Char.fromCode
-                                            (Random.int
-                                                ('a' |> Char.toCode)
-                                                ('z' |> Char.toCode)
+                                    [ Random.map3
+                                        (\name digits domain ->
+                                            (name |> String.fromList)
+                                                ++ (digits |> List.map String.fromInt |> String.concat)
+                                                ++ "@"
+                                                ++ domain
+                                        )
+                                        (Random.list 6
+                                            (Random.map Char.fromCode
+                                                (Random.int
+                                                    ('a' |> Char.toCode)
+                                                    ('z' |> Char.toCode)
+                                                )
                                             )
                                         )
-                                    )
-                                    (Random.list 4 (Random.int 0 9))
-                                    (Random.uniform "web.de" [ "gmail.com", "gmx.de", "outlook.com" ])
-                                ]
-                                |> Random.andThen identity
-                            )
-                            (Random.list 200
-                                (Random.map2
-                                    (\millis beatsPerMinute ->
-                                        { timestamp = Time.millisToPosix millis
-                                        , beatsPerMinute = beatsPerMinute
-                                        }
-                                    )
-                                    (Random.int 0 (6 * 60 * 60 * 1000))
-                                    (Random.float 60 105)
+                                        (Random.list 4 (Random.int 0 9))
+                                        (Random.uniform "web.de" [ "gmail.com", "gmx.de", "outlook.com" ])
+                                    ]
+                                    |> Random.andThen identity
                                 )
-                            )
-                            (Random.list 200
-                                (Random.map2
-                                    (\millis breathCountPerMinute ->
-                                        { timestamp = Time.millisToPosix millis
-                                        , breathCountPerMinute = breathCountPerMinute
-                                        }
-                                    )
-                                    (Random.int 0 (6 * 60 * 60 * 1000))
-                                    (Random.float 18 28)
-                                )
-                            )
-                            (Random.list 6
-                                (Random.map2
-                                    (\millis value ->
-                                        { timestamp = Time.millisToPosix millis
-                                        , value = value
-                                        }
-                                    )
-                                    (Random.int 0 (24 * 60 * 60 * 1000))
-                                    (Random.uniform FeelingBad [ FeelingOkay, FeelingGood ])
-                                )
-                            )
-                            (Random.list 20
-                                (Random.map2
-                                    (\millis comment ->
-                                        { timestamp = Time.millisToPosix millis
-                                        , comment = comment
-                                        }
-                                    )
-                                    (Random.int 0 (24 * 60 * 60 * 1000))
-                                    (Random.uniform
-                                        "Ich habe Beschwerden"
-                                        [ "Bitte neuen Termin"
-                                        , "Verfärbung im Lungenbereich"
-                                        , "Herzprobleme"
-                                        , "Schwäche und Müdigkeit"
-                                        , "Kopfschmerzen"
-                                        , "Kann Pillen nicht finden"
-                                        , "Wie sendet man die Daten?"
-                                        , "Passwort123456"
-                                        , "Mein Name ist Liselotte"
-                                        , "Ich habe in ihrer Praxis mein Gebiss vergessen"
-                                        , "Mein Herz beruhigt sich nicht. Was soll ich machen?"
-                                        , "Die Handystrahlen sind böse sagt feßbock"
-                                        ]
+                            |> randomAndMap
+                                (Random.list 200
+                                    (Random.map2
+                                        (\millis beatsPerMinute ->
+                                            { timestamp = Time.millisToPosix millis
+                                            , beatsPerMinute = beatsPerMinute
+                                            }
+                                        )
+                                        (Random.int 0 (6 * 60 * 60 * 1000))
+                                        (Random.float 60 105)
                                     )
                                 )
-                            )
+                            |> randomAndMap
+                                (Random.list 200
+                                    (Random.map2
+                                        (\millis breathCountPerMinute ->
+                                            { timestamp = Time.millisToPosix millis
+                                            , breathCountPerMinute = breathCountPerMinute
+                                            }
+                                        )
+                                        (Random.int 0 (6 * 60 * 60 * 1000))
+                                        (Random.float 18 28)
+                                    )
+                                )
+                            |> randomAndMap
+                                (Random.list 200
+                                    (Random.map2
+                                        (\millis degreesCelsius ->
+                                            { timestamp = Time.millisToPosix millis
+                                            , degreesCelsius = degreesCelsius
+                                            }
+                                        )
+                                        (Random.int 0 (6 * 60 * 60 * 1000))
+                                        (Random.float 36.5 38.8)
+                                    )
+                                )
+                            |> randomAndMap
+                                (Random.list 6
+                                    (Random.map2
+                                        (\millis value ->
+                                            { timestamp = Time.millisToPosix millis
+                                            , value = value
+                                            }
+                                        )
+                                        (Random.int 0 (24 * 60 * 60 * 1000))
+                                        (Random.uniform FeelingBad [ FeelingOkay, FeelingGood ])
+                                    )
+                                )
+                            |> randomAndMap
+                                (Random.list 20
+                                    (Random.map2
+                                        (\millis comment ->
+                                            { timestamp = Time.millisToPosix millis
+                                            , comment = comment
+                                            }
+                                        )
+                                        (Random.int 0 (24 * 60 * 60 * 1000))
+                                        (Random.uniform
+                                            "Ich habe Beschwerden"
+                                            [ "Bitte neuen Termin"
+                                            , "Verfärbung im Lungenbereich"
+                                            , "Herzprobleme"
+                                            , "Schwäche und Müdigkeit"
+                                            , "Kopfschmerzen"
+                                            , "Kann Pillen nicht finden"
+                                            , "Wie sendet man die Daten?"
+                                            , "Passwort123456"
+                                            , "Mein Name ist Liselotte"
+                                            , "Ich habe in ihrer Praxis mein Gebiss vergessen"
+                                            , "Mein Herz beruhigt sich nicht. Was soll ich machen?"
+                                            , "Die Handystrahlen sind böse sagt feßbock"
+                                            ]
+                                        )
+                                    )
+                                )
                         )
                     )
                 )
                 (Random.initialSeed 0)
     in
     dummies
+
+
+randomAndMap =
+    Random.map2 (|>)
 
 
 overviewPatientDummyRandomGenerator : Random.Generator { id : String, name : String, risk : Float }
