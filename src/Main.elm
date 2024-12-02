@@ -40,6 +40,7 @@ type State
         { id : String
         , name : String
         , risk : Float
+        , contact : String
         , heartRateHistory : List HeartRateObservation
         , heartRateHovering :
             List
@@ -250,6 +251,7 @@ view state =
                                                             { id = patientDetails.id
                                                             , name = patientDetails.name
                                                             , risk = patientDetails.risk
+                                                            , contact = patientDetails.contact
                                                             , heartRateHistory = patientDetails.heartRateHistory
                                                             , heartRateHovering = []
                                                             , respiratoryRateHistory = patientDetails.respiratoryRateHistory
@@ -309,6 +311,15 @@ view state =
                          )
                             ++ "%"
                         )
+                    ]
+                , Html.p
+                    []
+                    [ Html.h4
+                        [ Html.Attributes.style "margin-bottom" "0px"
+                        ]
+                        [ Html.text "Kontakt" ]
+                    , Html.text
+                        patientDetailsState.contact
                     ]
                 , Html.div
                     [ Html.Attributes.style "display" "flex"
@@ -590,6 +601,7 @@ patientDetailDummies :
         { id : String
         , name : String
         , risk : Float
+        , contact : String
         , heartRateHistory : List HeartRateObservation
         , respiratoryRateHistory : List RespiratoryRateObservation
         , feelingHistory : List FeelingObservation
@@ -606,27 +618,56 @@ patientDetailDummies =
                 (Random.map
                     (\healthDataList ->
                         List.map2
-                            (\patient healthData ->
+                            (\patient extraPatientData ->
                                 { id = patient.id
                                 , name = patient.name
                                 , risk = patient.risk
-                                , heartRateHistory = healthData.heartRateHistory
-                                , respiratoryRateHistory = healthData.respiratoryRateHistory
-                                , feelingHistory = healthData.feelingHistory
-                                , annotationHistory = healthData.annotationHistory
+                                , contact = extraPatientData.context
+                                , heartRateHistory = extraPatientData.heartRateHistory
+                                , respiratoryRateHistory = extraPatientData.respiratoryRateHistory
+                                , feelingHistory = extraPatientData.feelingHistory
+                                , annotationHistory = extraPatientData.annotationHistory
                                 }
                             )
                             patientOverviewInfoDummies
                             healthDataList
                     )
                     (Random.list 6
-                        (Random.map4
-                            (\heartRateHistory respiratoryRateHistory feelingHistory annotationHistory ->
-                                { heartRateHistory = heartRateHistory
+                        (Random.map5
+                            (\contact heartRateHistory respiratoryRateHistory feelingHistory annotationHistory ->
+                                { context = contact
+                                , heartRateHistory = heartRateHistory
                                 , respiratoryRateHistory = respiratoryRateHistory
                                 , feelingHistory = feelingHistory
                                 , annotationHistory = annotationHistory
                                 }
+                            )
+                            (Random.uniform
+                                (Random.list 10 (Random.int 0 9)
+                                    |> Random.map
+                                        (\digits ->
+                                            digits |> List.map String.fromInt |> String.concat
+                                        )
+                                )
+                                [ Random.map3
+                                    (\name digits domain ->
+                                        (name |> String.fromList)
+                                            ++ (digits |> List.map String.fromInt |> String.concat)
+                                            ++ "@"
+                                            ++ domain
+                                    )
+                                    (Random.list 6
+                                        (Random.map Char.fromCode
+                                            (Random.int
+                                                ('a' |> Char.toCode)
+                                                ('z' |> Char.toCode)
+                                            )
+                                        )
+                                    )
+                                    (Random.list 4 (Random.int 0 9))
+                                    (Random.uniform "web.de" [ "gmail.com", "gmx.de", "outlook.com" ])
+                                ]
+                                |> Random.andThen identity
                             )
                             (Random.list 200
                                 (Random.map2
