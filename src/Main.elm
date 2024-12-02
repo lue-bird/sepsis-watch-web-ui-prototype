@@ -391,7 +391,7 @@ view state =
                                     }
                             )
                     , uiChartFrame
-                        { label = "Körpertemperatur in °C in den letzten 6 Stunden"
+                        { label = "Körpertemperatur in °C (eigene Messung) in den letzten 24 Stunden"
                         , chart =
                             Chart.series
                                 (\observation -> observation.timestamp |> Time.posixToMillis |> Basics.toFloat)
@@ -738,14 +738,14 @@ patientDetailDummies =
                                     )
                                 )
                             |> randomAndMap
-                                (Random.list 200
+                                (Random.list 6
                                     (Random.map2
                                         (\millis degreesCelsius ->
                                             { timestamp = Time.millisToPosix millis
                                             , degreesCelsius = degreesCelsius
                                             }
                                         )
-                                        (Random.int 0 (6 * 60 * 60 * 1000))
+                                        (Random.int 0 (24 * 60 * 60 * 1000))
                                         (Random.float 36.5 38.8)
                                     )
                                 )
